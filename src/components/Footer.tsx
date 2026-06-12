@@ -22,7 +22,7 @@ function LinkedinIcon({ className }: { className?: string }) {
   )
 }
 
-export default function Footer() {
+export default function Footer({ onHome }: { onHome?: () => void }) {
   return (
     <footer className="bg-white border-t border-gray-100">
       <div className="max-w-7xl mx-auto px-6 py-16">
@@ -30,7 +30,9 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="mb-4">
-              <img src="/logo/1.avif" alt="projekx" className="h-10 w-auto" />
+              <button onClick={onHome} className="inline-flex">
+                <img src="/logo/1.avif" alt="projekx" className="h-10 w-auto" />
+              </button>
             </div>
             <p className="text-gray-500 text-sm leading-relaxed mb-6">
               Project management made effortless. Build better products with the tools your team actually wants to use.

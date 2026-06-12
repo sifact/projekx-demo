@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import {
   LayoutDashboard, Folder, CheckCircle2, Users, TrendingUp,
   LayoutTemplate, Globe, FileText, Layers, Code2, BookOpen, HelpCircle,
   Search, Bell, Zap, Plus, Calendar, BarChart2, Activity,
   LogOut, ArrowRight, FolderOpen, Clock, Menu, X,
-  Mail, Phone, MessageSquare, ExternalLink, Play,
-  ChevronDown, Star, Award, Shield, Database,
+  Mail, Phone, MessageSquare, MessageCircle, Play,
+  ChevronDown, Star, Database,
   LayoutGrid, List, MoreVertical, Settings, CheckCheck, Circle,
+  ThumbsUp, ThumbsDown, Share2,
+  PhoneCall, GraduationCap, ClipboardList, CheckSquare,
+  User as UserIcon, File, Link2, Lock,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { getCurrentUser, logoutUser } from '@/utils/auth'
@@ -41,10 +44,10 @@ function EmptyState({ icon: Icon, title, desc, action, onAction }: {
   icon: LucideIcon; title: string; desc: string; action?: string; onAction?: () => void
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-      <Icon className="h-14 w-14 text-gray-200 mb-4" />
+    <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+      <Icon className="h-12 w-12 text-gray-300 mb-3" />
       <h3 className="font-bold text-gray-700 mb-1">{title}</h3>
-      <p className="text-sm text-gray-400 mb-6 max-w-xs">{desc}</p>
+      <p className="text-sm text-gray-400 mb-5 max-w-xs">{desc}</p>
       {action && (
         <button onClick={onAction}
           className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
@@ -76,6 +79,26 @@ function PageHeader({ title, subtitle, action, icon: Icon }: {
   )
 }
 
+function HeroHeader({ icon: Icon, title, subtitle }: { icon: LucideIcon; title: string; subtitle: string }) {
+  return (
+    <div className="text-center mb-8">
+      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center mx-auto mb-4 shadow-lg">
+        <Icon className="h-10 w-10 text-white" />
+      </div>
+      <h2 className="text-2xl font-black text-gray-900 mb-2">{title}</h2>
+      <p className="text-gray-400 text-sm max-w-lg mx-auto">{subtitle}</p>
+    </div>
+  )
+}
+
+const methodBadge: Record<string, string> = {
+  GET:    'bg-blue-100 text-blue-700',
+  POST:   'bg-amber-100 text-amber-700',
+  PATCH:  'bg-purple-100 text-purple-700',
+  DELETE: 'bg-red-100 text-red-700',
+  DEL:    'bg-red-100 text-red-700',
+}
+
 // ─── Notifications Page ───────────────────────────────────────────────────────
 
 function NotificationsPage() {
@@ -88,18 +111,15 @@ function NotificationsPage() {
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <button className="flex items-center gap-2 border border-gray-200 bg-white rounded-xl px-4 h-10 text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors">
-            <Settings className="h-4 w-4" />
-            Settings
+            <Settings className="h-4 w-4" />Settings
           </button>
           <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 h-10 text-sm font-semibold transition-colors">
-            <CheckCheck className="h-4 w-4" />
-            Mark all as read
+            <CheckCheck className="h-4 w-4" />Mark all as read
           </button>
         </div>
       </div>
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-        <EmptyState icon={Bell} title="No notifications yet"
-          desc="When you get notifications, they'll show up here. Stay tuned!" />
+        <EmptyState icon={Bell} title="No notifications yet" desc="When you get notifications, they'll show up here." />
       </div>
     </div>
   )
@@ -115,10 +135,10 @@ function DashboardHome({ user }: { user: User }) {
     { label: 'Completion Rate', value: '0%', icon: TrendingUp,   bg: 'bg-purple-500' },
   ]
   const quickActions = [
-    { label: 'Create Project', sub: 'Start New Project',  icon: Plus,     bg: 'bg-gradient-to-r from-cyan-400 to-blue-500' },
-    { label: 'Invite Team',    sub: 'Add collaborators',  icon: Users,    bg: 'bg-green-500' },
-    { label: 'Calendar',       sub: 'View deadlines',     icon: Calendar, bg: 'bg-amber-500' },
-    { label: 'Analytics',      sub: 'View insights',      icon: BarChart2,bg: 'bg-purple-500' },
+    { label: 'Create Project', sub: 'Start New Project',  icon: Plus,      bg: 'bg-gradient-to-r from-cyan-400 to-blue-500' },
+    { label: 'Invite Team',    sub: 'Add collaborators',  icon: Users,     bg: 'bg-green-500' },
+    { label: 'Calendar',       sub: 'View deadlines',     icon: Calendar,  bg: 'bg-amber-500' },
+    { label: 'Analytics',      sub: 'View insights',      icon: BarChart2, bg: 'bg-purple-500' },
   ]
 
   return (
@@ -219,31 +239,124 @@ function DashboardHome({ user }: { user: User }) {
   )
 }
 
+// ─── Create Project Modal ─────────────────────────────────────────────────────
+
+const projectColors = [
+  { value: '#3B82F6', label: 'Blue' },
+  { value: '#22C55E', label: 'Green' },
+  { value: '#EAB308', label: 'Yellow' },
+  { value: '#EF4444', label: 'Red' },
+  { value: '#6366F1', label: 'Purple' },
+  { value: '#06B6D4', label: 'Cyan' },
+]
+
+function CreateProjectModal({ onClose }: { onClose: () => void }) {
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [color, setColor] = useState('#3B82F6')
+  const [visibility, setVisibility] = useState('')
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="p-6">
+          <h2 className="text-xl font-black text-gray-900 mb-5">Create New Project</h2>
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Project Title *</label>
+            <input
+              type="text"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Enter project title..."
+              className="w-full border border-gray-200 rounded-xl px-4 h-11 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Description</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Enter project title..."
+              rows={3}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition resize-none"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-gray-700 mb-2">Project Color</label>
+            <div className="flex gap-2">
+              {projectColors.map(c => (
+                <button
+                  key={c.value}
+                  onClick={() => setColor(c.value)}
+                  className={`w-10 h-10 rounded-xl transition-transform ${color === c.value ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : ''}`}
+                  style={{ backgroundColor: c.value }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Visibility</label>
+            <div className="relative">
+              <select
+                value={visibility}
+                onChange={e => setVisibility(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 h-11 text-sm text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-200 transition cursor-pointer"
+              >
+                <option value="" disabled>Enter project title...</option>
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+                <option value="team">Team Only</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={onClose}
+              className="flex-1 border border-gray-200 rounded-xl h-11 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+              Cancel
+            </button>
+            <button
+              disabled={!title.trim()}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl h-11 text-sm font-semibold transition-colors">
+              Create Project
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── My Projects Page ─────────────────────────────────────────────────────────
 
 function ProjectsPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [favorite, setFavorite] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   return (
     <div>
+      {showCreateModal && <CreateProjectModal onClose={() => setShowCreateModal(false)} />}
       <PageHeader
         title="My Projects"
         subtitle="Manage your projects and workflows"
         action={
-          <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors flex-shrink-0">
+          <button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors flex-shrink-0">
             <Plus className="h-4 w-4" /> Create Project
           </button>
         }
       />
-
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-6">
         <div className="relative min-w-[160px] flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input type="text" placeholder="Search Projects"
             className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-4 h-10 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition" />
         </div>
-
         <button onClick={() => setFavorite(f => !f)}
           className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 h-10 text-sm text-gray-600 hover:bg-gray-50 transition-colors flex-shrink-0">
           <div className={`relative w-9 h-5 rounded-full transition-colors ${favorite ? 'bg-blue-600' : 'bg-gray-200'}`}>
@@ -252,7 +365,6 @@ function ProjectsPage() {
           <Star className={`h-4 w-4 ${favorite ? 'fill-yellow-400 text-yellow-400' : 'text-gray-400'}`} />
           <span>Favorite</span>
         </button>
-
         <div className="flex bg-white border border-gray-200 rounded-xl overflow-hidden flex-shrink-0">
           <button onClick={() => setViewMode('grid')}
             className={`w-10 h-10 flex items-center justify-center transition-colors ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-50'}`}>
@@ -263,13 +375,10 @@ function ProjectsPage() {
             <List className="h-4 w-4" />
           </button>
         </div>
-
         <button className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 h-10 text-sm text-gray-600 hover:bg-gray-50 transition-colors flex-shrink-0">
-          <BarChart2 className="h-4 w-4" />
-          Analytics
+          <BarChart2 className="h-4 w-4" />Analytics
         </button>
       </div>
-
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
         <EmptyState icon={FolderOpen} title="No projects found"
           desc="Create a project to start organizing your work, deadlines, and team collaboration."
@@ -309,31 +418,81 @@ function StatusIcon({ status }: { status: TaskStatus }) {
   )
 }
 
+function CreateTaskModal({ onClose }: { onClose: () => void }) {
+  const [taskName, setTaskName] = useState('')
+  const [project, setProject] = useState('')
+  const projects = Array.from(new Set(sampleTasks.filter(t => t.project).map(t => t.project!)))
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
+        <div className="p-6">
+          <h2 className="text-xl font-black text-gray-900 mb-5">Create New Task</h2>
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Task Name</label>
+            <input
+              type="text"
+              value={taskName}
+              onChange={e => setTaskName(e.target.value)}
+              placeholder="Task Name"
+              className="w-full border border-gray-200 rounded-xl px-4 h-11 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Project</label>
+            <div className="relative">
+              <select
+                value={project}
+                onChange={e => setProject(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 h-11 text-sm text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-200 transition cursor-pointer"
+              >
+                <option value="">Select Project</option>
+                {projects.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={onClose}
+              className="flex-1 border border-gray-200 rounded-xl h-11 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+              Cancel
+            </button>
+            <button
+              disabled={!taskName.trim()}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-xl h-11 text-sm font-semibold transition-colors">
+              Create Task
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TasksPage() {
   const [statusFilter, setStatusFilter] = useState('All Statuses')
   const [projectFilter, setProjectFilter] = useState('All Projects')
-
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const projects = ['All Projects', ...Array.from(new Set(sampleTasks.filter(t => t.project).map(t => t.project!)))]
   const statuses = ['All Statuses', 'Working on it', 'Not Started', 'Done']
-
   const filtered = sampleTasks.filter(t => {
     const matchStatus = statusFilter === 'All Statuses' || statusConfig[t.status].label === statusFilter
     const matchProject = projectFilter === 'All Projects' || t.project === projectFilter
     return matchStatus && matchProject
   })
-
   return (
     <div>
-      <PageHeader
-        title="My Tasks"
-        subtitle="All your assigned tasks across projects"
+      {showCreateModal && <CreateTaskModal onClose={() => setShowCreateModal(false)} />}
+      <PageHeader title="My Tasks" subtitle="All your assigned tasks across projects"
         action={
-          <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors flex-shrink-0">
+          <button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors flex-shrink-0">
             <Plus className="h-4 w-4" /> Add Task
           </button>
         }
       />
-
       <div className="flex flex-wrap gap-2 sm:gap-3 mb-5">
         <div className="relative flex-1 min-w-[140px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -349,25 +508,20 @@ function TasksPage() {
           {projects.map(p => <option key={p}>{p}</option>)}
         </select>
       </div>
-
       <div className="space-y-2">
         {filtered.map(task => {
           const cfg = statusConfig[task.status]
           return (
-            <div key={task.id}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-4 hover:shadow-md transition-shadow">
+            <div key={task.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-4 hover:shadow-md transition-shadow">
               <StatusIcon status={task.status} />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-900 text-sm leading-snug mb-1">{task.title}</p>
                 <div className="flex flex-wrap items-center gap-2">
                   {task.project && (
-                    <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                      {task.project}
-                    </span>
+                    <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{task.project}</span>
                   )}
                   <span className="flex items-center gap-1 text-xs text-gray-400">
-                    <Calendar className="h-3 w-3" />
-                    {task.date}
+                    <Calendar className="h-3 w-3" />{task.date}
                   </span>
                 </div>
               </div>
@@ -382,25 +536,133 @@ function TasksPage() {
   )
 }
 
+// ─── Invite Team Members Modal ────────────────────────────────────────────────
+
+function InviteTeamModal({ onClose }: { onClose: () => void }) {
+  const [emailInput, setEmailInput] = useState('')
+  const [emails, setEmails] = useState<string[]>([])
+  const [role, setRole] = useState('')
+  const [message, setMessage] = useState('')
+
+  const addEmail = () => {
+    const trimmed = emailInput.trim()
+    if (trimmed && !emails.includes(trimmed)) {
+      setEmails(prev => [...prev, trimmed])
+      setEmailInput('')
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') { e.preventDefault(); addEmail() }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-gray-700" />
+              <h2 className="text-lg font-black text-gray-900">Invite Team Members</h2>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <p className="text-sm text-gray-500 mb-5">Send invitations to team members to join your projekx workspace.</p>
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Email Addresses</label>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                value={emailInput}
+                onChange={e => setEmailInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type here..."
+                className="flex-1 border border-gray-200 rounded-xl px-4 h-11 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition"
+              />
+              <button onClick={addEmail}
+                className="w-11 h-11 bg-gray-600 hover:bg-gray-700 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-colors">
+                <Plus className="h-5 w-5" />
+              </button>
+            </div>
+            {emails.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {emails.map(e => (
+                  <span key={e} className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-full">
+                    {e}
+                    <button onClick={() => setEmails(prev => prev.filter(x => x !== e))} className="hover:text-blue-900">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Role</label>
+            <div className="relative">
+              <select
+                value={role}
+                onChange={e => setRole(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 h-11 text-sm text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-200 transition cursor-pointer"
+              >
+                <option value="">Choose an option...</option>
+                <option value="admin">Admin</option>
+                <option value="member">Member</option>
+                <option value="viewer">Viewer</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Personal Message (Optional)</label>
+            <textarea
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              placeholder="Add a personal message to the invitation..."
+              rows={3}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition resize-none"
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={onClose}
+              className="flex-1 border border-gray-200 rounded-xl h-11 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+              Cancel
+            </button>
+            <button
+              disabled={emails.length === 0}
+              className="flex-1 bg-gray-400 hover:bg-gray-500 disabled:bg-gray-300 text-white rounded-xl h-11 text-sm font-semibold transition-colors">
+              Send {emails.length} Invitation{emails.length !== 1 ? 's' : ''}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Team Members Page ────────────────────────────────────────────────────────
 
 function TeamPage({ user }: { user: User }) {
+  const [showInviteModal, setShowInviteModal] = useState(false)
   const joinDate = user.createdAt
     ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-
   return (
     <div>
-      <PageHeader
-        title="Team Members"
-        subtitle="Collaborate with your team members and track their contributions"
+      {showInviteModal && <InviteTeamModal onClose={() => setShowInviteModal(false)} />}
+      <PageHeader title="Team Members" subtitle="Collaborate with your team members and track their contributions"
         action={
-          <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors flex-shrink-0">
+          <button onClick={() => setShowInviteModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors flex-shrink-0">
             <Plus className="h-4 w-4" /> Invite Member
           </button>
         }
       />
-
       <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
         <div className="relative flex-1 min-w-[160px] max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -408,13 +670,9 @@ function TeamPage({ user }: { user: User }) {
             className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-4 h-10 text-sm text-gray-600 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition" />
         </div>
         <select className="bg-white border border-gray-200 rounded-xl px-3 h-10 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-200 cursor-pointer">
-          <option>All Roles</option>
-          <option>Admin</option>
-          <option>Member</option>
-          <option>Viewer</option>
+          <option>All Roles</option><option>Admin</option><option>Member</option><option>Viewer</option>
         </select>
       </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-start gap-3 mb-4">
@@ -432,7 +690,6 @@ function TeamPage({ user }: { user: User }) {
               </button>
             </div>
           </div>
-
           <div className="flex border-t border-b border-gray-100 py-3 mb-3">
             <div className="flex-1 text-center">
               <p className="text-lg font-black text-gray-900">0</p>
@@ -444,15 +701,12 @@ function TeamPage({ user }: { user: User }) {
               <p className="text-xs text-gray-400">Tasks Done</p>
             </div>
           </div>
-
           <div className="flex items-center gap-2 text-xs text-gray-400 mb-4">
             <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
             <span>Joined {joinDate}</span>
           </div>
-
           <button className="w-full flex items-center justify-center gap-2 border border-blue-200 text-blue-600 hover:bg-blue-50 rounded-xl py-2 text-sm font-semibold transition-colors">
-            <Users className="h-4 w-4" />
-            View Profile
+            <Users className="h-4 w-4" />View Profile
           </button>
         </div>
       </div>
@@ -463,38 +717,58 @@ function TeamPage({ user }: { user: User }) {
 // ─── Analytics Page ───────────────────────────────────────────────────────────
 
 function AnalyticsPage() {
-  const metrics = [
-    { label: 'Total Projects',  value: '0',  icon: FolderOpen,   color: 'bg-blue-500' },
-    { label: 'Tasks Completed', value: '0',  icon: CheckCircle2, color: 'bg-green-500' },
-    { label: 'Team Members',    value: '1',  icon: Users,        color: 'bg-violet-500' },
-    { label: 'Productivity',    value: '0%', icon: TrendingUp,   color: 'bg-amber-500' },
+  const statCards = [
+    { label: 'Total Tasks',      value: '0',  sub: 'Active tasks tracked', icon: CheckCircle2, bg: 'bg-blue-500' },
+    { label: 'Completion Rate',  value: '0%', sub: null,                   icon: CheckCircle2, bg: 'bg-green-500', progress: true },
+    { label: 'Overdue Tasks',    value: '0',  sub: 'Need attention',       icon: Clock,        bg: 'bg-red-500' },
+    { label: 'Active Projects',  value: '0',  sub: 'Projects in use',      icon: Folder,       bg: 'bg-purple-500' },
   ]
   return (
     <div>
-      <PageHeader title="Analytics" subtitle="Insights into your team's performance" icon={TrendingUp} />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
-        {metrics.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm">
-            <div className={`w-9 h-9 rounded-xl ${color} flex items-center justify-center mb-3`}>
-              <Icon className="h-4 w-4 text-white" />
+      <h2 className="text-2xl font-black text-gray-900 mb-1">Analytics Dashboard</h2>
+      <p className="text-sm text-gray-400 mb-6">Insights and metrics across your projects and tasks</p>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-5">
+        {statCards.map(({ label, value, sub, icon: Icon, bg, progress }) => (
+          <div key={label} className={`${bg} rounded-2xl p-5 text-white flex flex-col gap-2`}>
+            <div className="flex items-center gap-2 text-white/90 text-sm font-semibold">
+              <Icon className="h-4 w-4 flex-shrink-0" /> {label}
             </div>
-            <p className="text-xs text-gray-400 mb-0.5">{label}</p>
-            <p className="text-2xl font-black text-gray-900">{value}</p>
+            <p className="text-4xl font-black leading-none">{value}</p>
+            {progress ? (
+              <div className="w-full bg-white/30 rounded-full h-2 mt-1">
+                <div className="bg-white rounded-full h-2" style={{ width: '1%' }} />
+              </div>
+            ) : (
+              <p className="text-white/75 text-xs">{sub}</p>
+            )}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
-        {['Project Completion Rate', 'Task Activity (Last 30 Days)'].map(title => (
-          <div key={title} className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm">
-            <h3 className="font-bold text-gray-900 text-sm mb-4">{title}</h3>
-            <div className="flex items-end gap-1 h-28">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="flex-1 bg-blue-100 rounded-t-sm" style={{ height: '4px' }} />
-              ))}
-            </div>
-            <p className="text-xs text-gray-400 mt-3 text-center">No data yet — start a project to see analytics</p>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 font-bold text-gray-900 mb-1 text-sm">
+            <Activity className="h-5 w-5 text-blue-500 flex-shrink-0" />
+            Task Status Distribution
           </div>
-        ))}
+          <EmptyState icon={BarChart2} title="No data available" desc="Complete tasks to see status distribution" />
+        </div>
+        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 font-bold text-gray-900 mb-1 text-sm">
+            <TrendingUp className="h-5 w-5 text-orange-500 flex-shrink-0" />
+            Priority Distribution
+          </div>
+          <EmptyState icon={TrendingUp} title="No data available" desc="Add tasks with priorities to see distribution" />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-2 font-bold text-gray-900 mb-1 text-sm">
+          <BarChart2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+          Project Performance
+        </div>
+        <EmptyState icon={BarChart2} title="No project data" desc="Create projects and complete tasks to see performance metrics" />
       </div>
     </div>
   )
@@ -503,33 +777,30 @@ function AnalyticsPage() {
 // ─── Templates Page ───────────────────────────────────────────────────────────
 
 function TemplatesPage() {
-  const templates = [
-    { name: 'Agile Sprint Board',  desc: 'Run sprints with backlog, in-progress, and done columns.', icon: LayoutTemplate, color: 'bg-blue-500',   tag: 'Engineering' },
-    { name: 'Product Roadmap',     desc: 'Plan quarters, milestones, and feature launches visually.', icon: TrendingUp,    color: 'bg-violet-500', tag: 'Product' },
-    { name: 'Bug Tracker',         desc: 'Capture, prioritize, and close bugs across releases.',       icon: Shield,        color: 'bg-red-500',    tag: 'Engineering' },
-    { name: 'Marketing Campaign',  desc: 'Coordinate campaigns from brief to publish date.',           icon: BarChart2,     color: 'bg-pink-500',   tag: 'Marketing' },
-    { name: 'Content Calendar',    desc: 'Schedule and publish content with editorial workflows.',     icon: Calendar,      color: 'bg-amber-500',  tag: 'Marketing' },
-    { name: 'Client Onboarding',   desc: 'Smooth onboarding flow for new clients and customers.',      icon: Users,         color: 'bg-green-500',  tag: 'Operations' },
-  ]
   return (
     <div>
-      <PageHeader title="Templates" subtitle="Kickstart projects with pre-built templates" icon={LayoutTemplate} />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {templates.map(({ name, desc, icon: Icon, color, tag }) => (
-          <div key={name} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-3 mb-3">
-              <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center flex-shrink-0`}>
-                <Icon className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{tag}</span>
-            </div>
-            <h3 className="font-bold text-gray-900 text-sm mb-1">{name}</h3>
-            <p className="text-xs text-gray-500 leading-relaxed mb-4">{desc}</p>
-            <button className="w-full text-sm font-semibold text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-400 rounded-xl py-2 transition-colors">
-              Use Template
-            </button>
-          </div>
-        ))}
+      <HeroHeader icon={LayoutTemplate} title="Project Templates"
+        subtitle="Start your projects faster with our professionally designed templates" />
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-6 flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input type="text" placeholder="Search templates..."
+            className="w-full bg-gray-50 rounded-xl pl-9 pr-4 h-10 text-sm text-gray-600 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition" />
+        </div>
+        <select className="bg-gray-50 border border-gray-200 rounded-xl px-3 h-10 text-sm text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 cursor-pointer min-w-[160px]">
+          <option value="">Choose an option...</option>
+          <option>Engineering</option>
+          <option>Product</option>
+          <option>Marketing</option>
+          <option>Operations</option>
+        </select>
+      </div>
+
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <LayoutTemplate className="h-14 w-14 text-gray-300 mb-3" />
+        <h3 className="font-bold text-gray-700 mb-1">No templates found</h3>
+        <p className="text-sm text-gray-400">Try adjusting your search or filters</p>
       </div>
     </div>
   )
@@ -537,30 +808,88 @@ function TemplatesPage() {
 
 // ─── Community Page ───────────────────────────────────────────────────────────
 
+const communityPosts = [
+  { id: 1, category: 'Success Stories', trending: true, title: 'title', body: 'discussion about this project...', author: 'BALA MUTHUKUMARAN A', date: 'May 19, 2026', likes: 3, dislikes: 0, comments: 1 },
+]
+
 function CommunityPage() {
-  const channels = [
-    { name: 'General Discussion', desc: 'Talk about anything projekx-related',   icon: MessageSquare, count: '2.4k members' },
-    { name: 'Feature Requests',   desc: 'Suggest and vote on new features',       icon: Star,          count: '1.1k members' },
-    { name: 'Tips & Tricks',      desc: 'Share workflows and productivity hacks', icon: Award,         count: '890 members' },
-    { name: 'Announcements',      desc: 'Official product updates and news',       icon: Bell,          count: '5.2k members' },
+  const [tab, setTab] = useState('All')
+  const [sortTab, setSortTab] = useState('Recent')
+  const tabs = ['All', 'Success Stories', 'Feature Requests', 'General', 'Project Management', 'Tools & Software', 'Communication']
+  const sortTabs = [
+    { label: 'Recent',   icon: Clock },
+    { label: 'Trending', icon: TrendingUp },
+    { label: 'Popular',  icon: ThumbsUp },
   ]
+
   return (
     <div>
-      <PageHeader title="Community" subtitle="Connect with thousands of projekx users" icon={Globe} />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {channels.map(({ name, desc, icon: Icon, count }) => (
-          <div key={name} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <Icon className="h-5 w-5 text-blue-600" />
+      <HeroHeader icon={Users} title="Projekx Community"
+        subtitle="Connect with other project managers, share experiences, and learn from the community." />
+
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-5">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input type="text" placeholder="Search discussions..."
+            className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-4 h-10 text-sm text-gray-600 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition" />
+        </div>
+        <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 h-10 rounded-xl flex items-center gap-2 transition-colors flex-shrink-0">
+          <Plus className="h-4 w-4" /> Start Discussion
+        </button>
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-none">
+        {tabs.map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+              tab === t ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+            }`}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm flex mb-4 overflow-hidden">
+        {sortTabs.map(({ label, icon: Icon }) => (
+          <button key={label} onClick={() => setSortTab(label)}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-colors border-r last:border-0 border-gray-100 ${
+              sortTab === label ? 'bg-white text-gray-900' : 'bg-gray-50 text-gray-400 hover:bg-white hover:text-gray-700'
+            }`}>
+            <Icon className="h-4 w-4" /> {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        {communityPosts.map(post => (
+          <div key={post.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2.5 py-0.5 rounded-full">{post.category}</span>
+                {post.trending && (
+                  <span className="text-xs font-semibold bg-orange-50 text-orange-500 px-2.5 py-0.5 rounded-full">🔥 Trending</span>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-900 text-sm">{name}</h3>
-                <p className="text-xs text-gray-400">{count}</p>
-              </div>
-              <ExternalLink className="h-4 w-4 text-gray-300 flex-shrink-0" />
+              <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors">
+                <Share2 className="h-3.5 w-3.5" /> Share
+              </button>
             </div>
-            <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
+            <h3 className="font-bold text-gray-900 mb-1">{post.title}</h3>
+            <p className="text-sm text-gray-500 mb-4">{post.body}</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-gray-100 pt-3">
+              <span className="text-xs text-gray-400">By {post.author} &nbsp; {post.date}</span>
+              <div className="flex items-center gap-4">
+                <button className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                  <ThumbsUp className="h-4 w-4" /> {post.likes}
+                </button>
+                <button className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                  <ThumbsDown className="h-4 w-4" /> {post.dislikes}
+                </button>
+                <button className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                  <MessageCircle className="h-4 w-4" /> {post.comments}
+                </button>
+              </div>
+            </div>
           </div>
         ))}
       </div>
@@ -570,33 +899,65 @@ function CommunityPage() {
 
 // ─── Blog Page ────────────────────────────────────────────────────────────────
 
-function BlogPage() {
-  const posts = [
-    { title: '5 Ways to Boost Team Productivity with projekx',    date: 'Jun 10, 2025', category: 'Productivity', read: '4 min' },
-    { title: 'Introducing Timeline View: Visualize Your Projects', date: 'Jun 5, 2025',  category: 'Product',      read: '2 min' },
-    { title: 'How Remote Teams Stay Aligned Using projekx',        date: 'May 28, 2025', category: 'Remote Work',  read: '6 min' },
-    { title: 'Automations 101: Save Hours Every Week',             date: 'May 20, 2025', category: 'Tutorial',     read: '5 min' },
-    { title: "From Chaos to Clarity: A PM's Guide to projekx",     date: 'May 12, 2025', category: 'Guide',        read: '8 min' },
-    { title: "Q2 Product Update: What's New in projekx",           date: 'May 1, 2025',  category: 'Updates',      read: '3 min' },
-  ]
+const blogPosts = [
+  { id: 1, category: 'Best Practices', date: 'May 19, 2026', title: 'success', subtitle: 'Best Tech Learner', author: 'BALA MUTHUKUMARAN A' },
+]
+
+function BlogPage({ user }: { user: User }) {
+  const [tab, setTab] = useState('All')
+  const tabs = ['All', 'Tutorial', 'Best Practices', 'Technology']
+
   return (
     <div>
-      <PageHeader title="Blog" subtitle="Insights, tips, and product updates" icon={FileText} />
-      <div className="space-y-3">
-        {posts.map(({ title, date, category, read }) => (
-          <div key={title} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <FileText className="h-5 w-5 text-blue-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{category}</span>
-                <span className="text-xs text-gray-400">{read} read</span>
+      <HeroHeader icon={Users} title="Projekx Blog"
+        subtitle="Insights, tips, and best practices for project management and team collaboration." />
+
+      <div className="flex items-center gap-3 mb-6 max-w-2xl mx-auto">
+        <div className="w-10 h-10 rounded-full bg-violet-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+          {user.firstName[0]}{user.lastName[0]}
+        </div>
+        <input type="text" placeholder="What's on your mind?"
+          className="flex-1 bg-white border border-gray-200 rounded-full px-5 h-11 text-sm text-gray-600 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition" />
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-6">
+        <div className="relative flex-1 min-w-0 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input type="text" placeholder="Search discussions..."
+            className="w-full bg-white border border-gray-200 rounded-xl pl-9 pr-4 h-10 text-sm text-gray-600 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition" />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {tabs.map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                tab === t ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+              }`}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {blogPosts.map(post => (
+          <div key={post.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+            <div className="h-40 bg-gray-100" />
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2.5 py-0.5 rounded-full">{post.category}</span>
+                <span className="flex items-center gap-1 text-xs text-gray-400">
+                  <Calendar className="h-3 w-3" /> {post.date}
+                </span>
               </div>
-              <h3 className="font-bold text-gray-900 text-sm leading-snug">{title}</h3>
-              <p className="text-xs text-gray-400 mt-1">{date}</p>
+              <h3 className="font-bold text-gray-900 text-sm mb-0.5">{post.title}</h3>
+              <p className="text-xs text-gray-500 mb-3">{post.subtitle}</p>
+              <div className="border-t border-gray-100 pt-3 flex items-center justify-between">
+                <span className="text-xs text-gray-400">By {post.author}</span>
+                <button className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                  Read More
+                </button>
+              </div>
             </div>
-            <ExternalLink className="h-4 w-4 text-gray-300 flex-shrink-0 mt-1" />
           </div>
         ))}
       </div>
@@ -640,43 +1001,152 @@ function IntegrationsPage() {
 
 // ─── API Docs Page ────────────────────────────────────────────────────────────
 
-function ApiDocsPage() {
-  const endpoints = [
-    { method: 'GET',    path: '/api/v1/projects',  desc: 'List all projects in your workspace' },
-    { method: 'POST',   path: '/api/v1/projects',  desc: 'Create a new project' },
-    { method: 'GET',    path: '/api/v1/tasks',     desc: 'List tasks with optional filters' },
-    { method: 'POST',   path: '/api/v1/tasks',     desc: 'Create a new task in a project' },
-    { method: 'PATCH',  path: '/api/v1/tasks/:id', desc: 'Update a task status or assignee' },
-    { method: 'DELETE', path: '/api/v1/tasks/:id', desc: 'Delete a task permanently' },
-    { method: 'GET',    path: '/api/v1/users',     desc: 'List all team members' },
-    { method: 'GET',    path: '/api/v1/analytics', desc: 'Fetch workspace analytics data' },
-  ]
-  const badge: Record<string, string> = {
-    GET: 'bg-green-100 text-green-700', POST: 'bg-blue-100 text-blue-700',
-    PATCH: 'bg-amber-100 text-amber-700', DELETE: 'bg-red-100 text-red-700',
+interface ApiEndpoint {
+  id: string; method: string; label: string; path: string; title: string; description: string
+  params?: { name: string; type: string; required: boolean; desc: string }[]
+  request?: string; response?: string
+}
+
+const apiNav: { group: string; endpoints: ApiEndpoint[] }[] = [
+  {
+    group: 'AUTHENTICATION',
+    endpoints: [{
+      id: 'auth-login', method: 'POST', label: 'Login', path: '/api/v1/auth/login',
+      title: 'Login',
+      description: 'Authenticates a user with email and password. Returns a JWT access token used for all subsequent authenticated requests.',
+      params: [
+        { name: 'email',    type: 'string', required: true, desc: "The user's registered email address." },
+        { name: 'password', type: 'string', required: true, desc: "The user's account password. Minimum 8 characters." },
+      ],
+      request: `curl -X POST https://api.projekxhub.com/v1/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "email": "user@example.com",
+    "password": "yourpassword123"
+  }'`,
+      response: `{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6...",
+  "refresh_token": "rt_9f8a7b6c5d4e3f2a1b0c",
+  "expires_in": 3600,
+  "user": {
+    "id": "us_1f3a2b",
+    "email": "user@example.com",
+    "name": "Robb Johnson"
   }
+}`,
+    }],
+  },
+  {
+    group: 'PROJECTS',
+    endpoints: [
+      { id: 'get-projects',  method: 'GET',    label: 'List projects',   path: '/api/v1/projects',     title: 'List Projects',   description: 'Returns all projects in your workspace.', params: [], request: 'curl -X GET https://api.projekxhub.com/v1/projects \\\n  -H "Authorization: Bearer <token>"', response: '[{"id":"proj_1","name":"My Project","status":"active"}]' },
+      { id: 'post-project',  method: 'POST',   label: 'Create project',  path: '/api/v1/projects',     title: 'Create Project',  description: 'Creates a new project in your workspace.', params: [{ name: 'name', type: 'string', required: true, desc: 'The project name.' }], request: 'curl -X POST https://api.projekxhub.com/v1/projects \\\n  -H "Authorization: Bearer <token>"', response: '{"id":"proj_new","name":"New Project","status":"active"}' },
+      { id: 'get-project',   method: 'GET',    label: 'Get project',     path: '/api/v1/projects/:id', title: 'Get Project',     description: 'Returns a specific project by its ID.', params: [], request: 'curl -X GET https://api.projekxhub.com/v1/projects/proj_1 \\\n  -H "Authorization: Bearer <token>"', response: '{"id":"proj_1","name":"My Project","status":"active"}' },
+      { id: 'patch-project', method: 'PATCH',  label: 'Update project',  path: '/api/v1/projects/:id', title: 'Update Project',  description: "Updates a project's name or status.", params: [{ name: 'name', type: 'string', required: false, desc: 'New project name.' }], request: 'curl -X PATCH https://api.projekxhub.com/v1/projects/proj_1 \\\n  -H "Authorization: Bearer <token>"', response: '{"id":"proj_1","name":"Updated Project"}' },
+      { id: 'del-project',   method: 'DELETE', label: 'Delete project',  path: '/api/v1/projects/:id', title: 'Delete Project',  description: 'Permanently deletes a project and all its tasks.', params: [], request: 'curl -X DELETE https://api.projekxhub.com/v1/projects/proj_1 \\\n  -H "Authorization: Bearer <token>"', response: '{"message":"Project deleted successfully"}' },
+    ],
+  },
+  {
+    group: 'TASKS',
+    endpoints: [
+      { id: 'get-tasks',  method: 'GET',  label: 'List tasks',    path: '/api/v1/tasks', title: 'List Tasks',   description: 'Returns all tasks with optional filters.', params: [], request: 'curl -X GET https://api.projekxhub.com/v1/tasks \\\n  -H "Authorization: Bearer <token>"', response: '[{"id":"task_1","title":"My Task","status":"working"}]' },
+      { id: 'post-task',  method: 'POST', label: 'Create Tasks',  path: '/api/v1/tasks', title: 'Create Task',  description: 'Creates a new task in a project.', params: [{ name: 'title', type: 'string', required: true, desc: 'The task title.' }, { name: 'project_id', type: 'string', required: true, desc: 'ID of the parent project.' }], request: 'curl -X POST https://api.projekxhub.com/v1/tasks \\\n  -H "Authorization: Bearer <token>"', response: '{"id":"task_new","title":"New Task","status":"notstarted"}' },
+    ],
+  },
+  {
+    group: 'TEAMS',
+    endpoints: [
+      { id: 'post-member', method: 'POST', label: 'Add member', path: '/api/v1/teams/members', title: 'Add Team Member', description: 'Invites a new member to the workspace by email.', params: [{ name: 'email', type: 'string', required: true, desc: "Member's email address." }], request: 'curl -X POST https://api.projekxhub.com/v1/teams/members \\\n  -H "Authorization: Bearer <token>"', response: '{"message":"Invitation sent successfully"}' },
+    ],
+  },
+  {
+    group: 'ANALYTICS',
+    endpoints: [
+      { id: 'get-analytics', method: 'GET', label: 'Overview', path: '/api/v1/analytics', title: 'Analytics Overview', description: 'Returns workspace analytics including task counts and completion rates.', params: [], request: 'curl -X GET https://api.projekxhub.com/v1/analytics \\\n  -H "Authorization: Bearer <token>"', response: '{"totalProjects":0,"totalTasks":0,"completionRate":0,"activeMembers":1}' },
+    ],
+  },
+]
+
+function ApiDocsPage() {
+  const [selectedId, setSelectedId] = useState('auth-login')
+  const allEndpoints = apiNav.flatMap(g => g.endpoints)
+  const selected = allEndpoints.find(e => e.id === selectedId) ?? allEndpoints[0]
+
   return (
     <div>
-      <PageHeader title="API Docs" subtitle="Build on top of projekx with our REST API" icon={Code2}
-        action={
-          <a href="#" className="flex items-center gap-2 text-sm font-semibold text-blue-600 border border-blue-200 hover:border-blue-400 px-4 py-2.5 rounded-xl transition-colors">
-            <ExternalLink className="h-4 w-4" /> Full Docs
-          </a>
-        } />
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex flex-wrap items-center gap-2">
-          <span className="text-sm font-bold text-gray-500">Base URL:</span>
-          <code className="text-sm text-blue-600 font-mono bg-blue-50 px-2 py-0.5 rounded">https://api.projekxhub.com</code>
-        </div>
-        <div className="divide-y divide-gray-50">
-          {endpoints.map(({ method, path, desc }) => (
-            <div key={path} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-4 hover:bg-gray-50 transition-colors">
-              <span className={`text-[11px] font-bold px-2.5 py-1 rounded w-fit flex-shrink-0 ${badge[method]}`}>{method}</span>
-              <code className="text-sm font-mono text-gray-800 flex-shrink-0">{path}</code>
-              <p className="text-sm text-gray-500 sm:ml-auto">{desc}</p>
+      <HeroHeader icon={Code2} title="API Documentation"
+        subtitle="Integrate projekx into your applications with our comprehensive REST API. Build powerful project management experiences for your users." />
+
+      <div className="flex flex-col lg:flex-row gap-4 min-h-[500px]">
+        {/* Left nav */}
+        <div className="lg:w-52 flex-shrink-0 space-y-4">
+          {apiNav.map(({ group, endpoints }) => (
+            <div key={group}>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">{group}</p>
+              <div className="space-y-0.5">
+                {endpoints.map(ep => (
+                  <button key={ep.id} onClick={() => setSelectedId(ep.id)}
+                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left transition-colors ${
+                      selectedId === ep.id ? 'bg-blue-50' : 'hover:bg-gray-100'
+                    }`}>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${methodBadge[ep.method === 'DELETE' ? 'DEL' : ep.method]}`}>
+                      {ep.method === 'DELETE' ? 'DEL' : ep.method}
+                    </span>
+                    <span className={`text-sm truncate ${selectedId === ep.id ? 'text-blue-700 font-semibold' : 'text-gray-500'}`}>
+                      {ep.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           ))}
         </div>
+
+        {/* Right content */}
+        {selected && (
+          <div className="flex-1 min-w-0 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 overflow-auto">
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <span className={`text-xs font-bold px-2.5 py-1 rounded ${methodBadge[selected.method === 'DELETE' ? 'DEL' : selected.method]}`}>
+                {selected.method}
+              </span>
+              <code className="text-sm text-gray-700 font-mono bg-gray-100 px-3 py-1 rounded-lg">{selected.path}</code>
+            </div>
+            <h3 className="text-xl font-black text-gray-900 mb-2">{selected.title}</h3>
+            <p className="text-sm text-gray-500 mb-6">{selected.description}</p>
+
+            {selected.params && selected.params.length > 0 && (
+              <div className="mb-6">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Body Parameters</p>
+                <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+                  {selected.params.map(p => (
+                    <div key={p.name} className="px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                        <span className="font-bold text-sm text-gray-900">{p.name}</span>
+                        <span className="text-xs text-gray-400">{p.type}</span>
+                        {p.required && <span className="text-xs font-bold text-red-500">required</span>}
+                      </div>
+                      <p className="text-xs text-gray-500">{p.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selected.request && (
+              <div className="mb-6">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Request</p>
+                <pre className="bg-gray-900 text-green-400 text-xs font-mono rounded-xl p-4 overflow-x-auto whitespace-pre-wrap leading-relaxed">{selected.request}</pre>
+              </div>
+            )}
+
+            {selected.response && (
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Response 200</p>
+                <pre className="bg-gray-900 text-blue-300 text-xs font-mono rounded-xl p-4 overflow-x-auto whitespace-pre-wrap leading-relaxed">{selected.response}</pre>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -684,40 +1154,112 @@ function ApiDocsPage() {
 
 // ─── Tutorials Page ───────────────────────────────────────────────────────────
 
+const tutorialVideos = [
+  {
+    videoId: 'QV-39PBMW6Q',
+    title: 'projekx - An Easy-To-Use SAAS Tool For Project Management',
+    desc: 'One-liner: Projekx is an easy-to-use SAAS tool for project management.',
+    date: 'Sep 7',
+    category: 'Tutorial',
+  },
+  {
+    videoId: 'u8DvLB3D290',
+    title: 'projekx - Setting a Due Date for Your Task in projekx',
+    desc: 'Learn the fundamentals of effective project management and how to organize your team for success.',
+    date: 'Sep 7',
+    category: 'Tutorial',
+  },
+  {
+    videoId: 'QV-39PBMW6Q',
+    title: 'projekx - Project Progress Tracker in projekx',
+    desc: 'Track your project progress in real-time using our powerful built-in dashboard tools.',
+    date: 'Sep 7',
+    category: 'Tutorial',
+  },
+  {
+    videoId: 'u8DvLB3D290',
+    title: 'projekx - Organizing Tasks with Color Coding in projekx',
+    desc: 'Learn how to organize and prioritize your tasks using color coding for better visibility.',
+    date: 'Sep 7',
+    category: 'Tutorial',
+  },
+]
+
+const tutorialCategories: { label: string; icon: LucideIcon }[] = [
+  { label: 'Learning',           icon: GraduationCap },
+  { label: 'Project Management', icon: ClipboardList },
+  { label: 'Tasks',              icon: CheckSquare },
+  { label: 'Projects',           icon: LayoutGrid },
+  { label: 'Team',               icon: UserIcon },
+  { label: 'Analytics',          icon: BarChart2 },
+  { label: 'Templates',          icon: LayoutTemplate },
+  { label: 'Collaboration',      icon: Share2 },
+  { label: 'Files',              icon: File },
+  { label: 'Chat',               icon: MessageSquare },
+]
+
 function TutorialsPage() {
-  const tutorials = [
-    { title: 'Getting Started with projekx',     duration: '5:32',  level: 'Beginner' },
-    { title: 'Creating Your First Project',       duration: '3:15',  level: 'Beginner' },
-    { title: 'Task Management Deep Dive',         duration: '8:47',  level: 'Intermediate' },
-    { title: 'Using Automations to Save Time',    duration: '6:20',  level: 'Intermediate' },
-    { title: 'Advanced Analytics & Reporting',    duration: '10:05', level: 'Advanced' },
-    { title: 'Team Collaboration Best Practices', duration: '7:33',  level: 'Intermediate' },
-  ]
-  const levelColor: Record<string, string> = {
-    Beginner: 'bg-green-100 text-green-700',
-    Intermediate: 'bg-amber-100 text-amber-700',
-    Advanced: 'bg-red-100 text-red-700',
-  }
+  const [activeCategory, setActiveCategory] = useState('Learning')
+
   return (
     <div>
-      <PageHeader title="Tutorials" subtitle="Learn projekx with step-by-step video guides" icon={BookOpen} />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {tutorials.map(({ title, duration, level }) => (
-          <div key={title} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer group">
-            <div className="bg-gradient-to-br from-blue-100 to-indigo-100 h-32 flex items-center justify-center">
-              <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Play className="h-5 w-5 text-white ml-0.5" />
-              </div>
+      <HeroHeader icon={BookOpen} title="Video Tutorials"
+        subtitle="Master projekx with our comprehensive video tutorials. From basic setup to advanced techniques, we've got you covered." />
+
+      <div className="flex flex-col lg:flex-row gap-5">
+        {/* Left sidebar */}
+        <div className="lg:w-56 flex-shrink-0">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input type="text" placeholder="Search tutorials..."
+                className="w-full bg-gray-50 rounded-xl pl-9 pr-3 h-10 text-sm text-gray-600 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition" />
             </div>
-            <div className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${levelColor[level]}`}>{level}</span>
-                <span className="text-xs text-gray-400">{duration}</span>
-              </div>
-              <h3 className="font-bold text-gray-900 text-sm leading-snug">{title}</h3>
+            <p className="font-bold text-gray-900 text-sm mb-3">Categories</p>
+            <div className="space-y-0.5">
+              {tutorialCategories.map(({ label, icon: Icon }) => (
+                <button key={label} onClick={() => setActiveCategory(label)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-left transition-colors ${
+                    activeCategory === label ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                  }`}>
+                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
-        ))}
+        </div>
+
+        {/* Video grid */}
+        <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start">
+          {tutorialVideos.map((v, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+              <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                <iframe
+                  src={`https://www.youtube.com/embed/${v.videoId}`}
+                  title={v.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full"
+                />
+              </div>
+              <div className="p-4 flex flex-col flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold bg-gray-100 text-gray-600 px-2.5 py-0.5 rounded-full">{v.category}</span>
+                  <span className="flex items-center gap-1 text-xs text-gray-400">
+                    <Calendar className="h-3 w-3" /> {v.date}
+                  </span>
+                </div>
+                <h3 className="font-bold text-gray-900 text-sm leading-snug mb-1.5">{v.title}</h3>
+                <p className="text-xs text-gray-500 leading-relaxed flex-1 mb-4">{v.desc}</p>
+                <a href={`https://youtu.be/${v.videoId}`} target="_blank" rel="noopener noreferrer"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                  <Play className="h-4 w-4" /> Watch Now
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -726,50 +1268,24 @@ function TutorialsPage() {
 // ─── Support Page ─────────────────────────────────────────────────────────────
 
 function SupportPage() {
-  const [openFaq, setOpenFaq] = useState<number | null>(null)
-  const faqs = [
-    { q: 'How do I create my first project?',  a: "Go to My Projects and click 'Create Project'. Give it a name, description, and due date, then invite team members." },
-    { q: 'Can I change my plan later?',        a: 'Yes, you can upgrade or downgrade at any time from Settings › Billing.' },
-    { q: 'How do I invite team members?',      a: "Navigate to Team Members and click 'Invite Member'. Enter their email and they'll receive an invitation link." },
-    { q: 'Is my data backed up?',              a: 'Yes, all data is automatically backed up every hour to multiple geographic regions.' },
-    { q: 'How do I export my data?',           a: "Go to Settings › Data & Privacy and click 'Export Data'. You'll receive a download link via email." },
+  const contacts = [
+    { icon: PhoneCall, label: 'Live Chat',  detail: '+13152773691' },
+    { icon: Mail,      label: 'Email',      detail: 'support@projekxhub.com' },
+    { icon: Phone,     label: 'Call',       detail: '+13152773691' },
   ]
+
   return (
     <div>
-      <PageHeader title="Support" subtitle="We're here to help you succeed" icon={HelpCircle} />
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        {[
-          { icon: MessageSquare, label: 'Live Chat',     desc: 'Chat with our team',   action: 'Start Chat',  color: 'bg-blue-500' },
-          { icon: Mail,          label: 'Email Support', desc: 'hello@projekxhub.com', action: 'Send Email',  color: 'bg-violet-500' },
-          { icon: Phone,         label: 'Phone Support', desc: '+1 (315) 277-3691',    action: 'Call Now',    color: 'bg-green-500' },
-        ].map(({ icon: Icon, label, desc, action, color }) => (
-          <div key={label} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm text-center">
-            <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center mx-auto mb-3`}>
-              <Icon className="h-6 w-6 text-white" />
-            </div>
-            <h3 className="font-bold text-gray-900 text-sm mb-1">{label}</h3>
-            <p className="text-xs text-gray-400 mb-4">{desc}</p>
-            <button className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">{action}</button>
+      <HeroHeader icon={PhoneCall} title="Support" subtitle="Support Description" />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
+        {contacts.map(({ icon: Icon, label, detail }) => (
+          <div key={label} className="bg-white rounded-2xl border border-gray-200 p-8 flex flex-col items-center text-center hover:shadow-md transition-shadow cursor-pointer">
+            <Icon className="h-10 w-10 text-blue-700 mb-4" strokeWidth={1.5} />
+            <h3 className="font-bold text-gray-900 text-base mb-1">{label}</h3>
+            <p className="text-sm text-gray-500">{detail}</p>
           </div>
         ))}
-      </div>
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
-        <h3 className="font-bold text-gray-900 mb-4">Frequently Asked Questions</h3>
-        <div className="space-y-2">
-          {faqs.map(({ q, a }, i) => (
-            <div key={i} className="border border-gray-100 rounded-xl overflow-hidden">
-              <button
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors gap-3">
-                <span className="text-sm font-semibold text-gray-800">{q}</span>
-                <ChevronDown className={`h-4 w-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${openFaq === i ? 'rotate-180' : ''}`} />
-              </button>
-              {openFaq === i && (
-                <div className="px-4 pb-4 text-sm text-gray-500 leading-relaxed border-t border-gray-50 pt-3">{a}</div>
-              )}
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   )
@@ -792,6 +1308,181 @@ function MemberRow({ user, compact }: { user: User; compact?: boolean }) {
   )
 }
 
+// ─── Settings Page ────────────────────────────────────────────────────────────
+
+function SettingsPage() {
+  const [notifications, setNotifications] = useState({
+    emailUpdates: false,
+    pushNotifications: false,
+    taskReminders: false,
+    projectUpdates: false,
+  })
+  const [profileVisibility, setProfileVisibility] = useState('')
+  const [activityVisibility, setActivityVisibility] = useState('')
+  const [theme, setTheme] = useState('Light')
+  const [language, setLanguage] = useState('English')
+  const [timezone, setTimezone] = useState('UTC')
+
+  const socialConnections = [
+    { name: 'Facebook', status: 'Connected', icon: Globe,           iconColor: 'text-blue-600' },
+    { name: 'Linkedin', status: 'Connected', icon: UserIcon,        iconColor: 'text-blue-700' },
+    { name: 'GitHub',   status: 'Connected', icon: Code2,           iconColor: 'text-gray-800' },
+    { name: 'Redit',    status: 'Connected', icon: MessageCircle,   iconColor: 'text-orange-500' },
+  ]
+
+  const notificationItems: { key: keyof typeof notifications; label: string; desc: string }[] = [
+    { key: 'emailUpdates',      label: 'Email Updates',       desc: 'Receive email notifications for important updates' },
+    { key: 'pushNotifications', label: 'Push Notifications',  desc: 'Get notified about activity in your browser' },
+    { key: 'taskReminders',     label: 'Task Reminders',      desc: 'Get reminded about upcoming deadlines' },
+    { key: 'projectUpdates',    label: 'Project Updates',     desc: 'Notifications when projects are updated' },
+  ]
+
+  return (
+    <div className="max-w-5xl">
+      <div className="mb-6">
+        <h2 className="text-2xl font-black text-gray-900">Settings</h2>
+        <p className="text-sm text-gray-400 mt-0.5">Manage your account preferences and privacy settings</p>
+      </div>
+
+      {/* Social Connections */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Link2 className="h-4 w-4 text-gray-700" />
+          <h3 className="font-bold text-gray-900">Social Connections</h3>
+        </div>
+        <p className="text-sm text-gray-400 mb-5">Connect your social media accounts to share projects and sync data.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+          {socialConnections.map(({ name, status, icon: Icon, iconColor }, i) => (
+            <div key={name} className={`flex items-center justify-between py-4 ${i % 2 === 0 ? 'md:pr-8 border-b md:border-b-0' : 'md:pl-8 md:border-l border-gray-100 border-b last:border-b-0'} border-gray-100`}>
+              <div className="flex items-center gap-3">
+                <Icon className={`h-5 w-5 ${iconColor}`} />
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">{name}</p>
+                  <p className="text-xs text-gray-400">{status}</p>
+                </div>
+              </div>
+              <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
+                Connect
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Notifications */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-4">
+        <div className="flex items-center gap-2 mb-4">
+          <Bell className="h-4 w-4 text-gray-700" />
+          <h3 className="font-bold text-gray-900">Notifications</h3>
+        </div>
+        <div className="divide-y divide-gray-100">
+          {notificationItems.map(({ key, label, desc }) => (
+            <div key={key} className="flex items-center justify-between py-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+              </div>
+              <button
+                onClick={() => setNotifications(prev => ({ ...prev, [key]: !prev[key] }))}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ml-4 ${notifications[key] ? 'bg-blue-600' : 'bg-gray-200'}`}>
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${notifications[key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Privacy */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-4">
+        <div className="flex items-center gap-2 mb-5">
+          <Lock className="h-4 w-4 text-gray-700" />
+          <h3 className="font-bold text-gray-900">Privacy</h3>
+        </div>
+        <div className="divide-y divide-gray-100">
+          <div className="pb-5">
+            <p className="text-sm font-semibold text-gray-900 mb-0.5">Profile Visibility</p>
+            <p className="text-xs text-gray-400 mb-3">Control who can see your profile information</p>
+            <div className="relative">
+              <select value={profileVisibility} onChange={e => setProfileVisibility(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 h-11 text-sm text-gray-500 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-200 transition cursor-pointer">
+                <option value="">Choose an option...</option>
+                <option value="public">Public</option>
+                <option value="friends">Friends only</option>
+                <option value="private">Private</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+          <div className="pt-5">
+            <p className="text-sm font-semibold text-gray-900 mb-0.5">Activity Visibility</p>
+            <p className="text-xs text-gray-400 mb-3">Control who can see your activity</p>
+            <div className="relative">
+              <select value={activityVisibility} onChange={e => setActivityVisibility(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 h-11 text-sm text-gray-500 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-200 transition cursor-pointer">
+                <option value="">Choose an option...</option>
+                <option value="public">Public</option>
+                <option value="friends">Friends only</option>
+                <option value="private">Private</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Preferences */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-5">
+          <Settings className="h-4 w-4 text-gray-700" />
+          <h3 className="font-bold text-gray-900">Preferences</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+          <div>
+            <p className="text-sm font-semibold text-gray-900 mb-2">Theme</p>
+            <div className="relative">
+              <select value={theme} onChange={e => setTheme(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 h-11 text-sm text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-200 transition cursor-pointer">
+                <option>Light</option>
+                <option>Dark</option>
+                <option>System</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900 mb-2">Language</p>
+            <div className="relative">
+              <select value={language} onChange={e => setLanguage(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 h-11 text-sm text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-200 transition cursor-pointer">
+                <option>English</option>
+                <option>Spanish</option>
+                <option>French</option>
+                <option>German</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-900 mb-2">Timezone</p>
+          <div className="relative">
+            <select value={timezone} onChange={e => setTimezone(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 h-11 text-sm text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-200 transition cursor-pointer">
+              <option>UTC</option>
+              <option>GMT</option>
+              <option>EST</option>
+              <option>PST</option>
+              <option>IST</option>
+              <option>CET</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function renderPage(id: string, user: User) {
   switch (id) {
     case 'notifications': return <NotificationsPage />
@@ -801,11 +1492,12 @@ function renderPage(id: string, user: User) {
     case 'analytics':     return <AnalyticsPage />
     case 'templates':     return <TemplatesPage />
     case 'community':     return <CommunityPage />
-    case 'blog':          return <BlogPage />
+    case 'blog':          return <BlogPage user={user} />
     case 'integrations':  return <IntegrationsPage />
     case 'api':           return <ApiDocsPage />
     case 'tutorials':     return <TutorialsPage />
     case 'support':       return <SupportPage />
+    case 'settings':      return <SettingsPage />
     default:              return <DashboardHome user={user} />
   }
 }
@@ -813,13 +1505,35 @@ function renderPage(id: string, user: User) {
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage({ navigate }: Props) {
-  const [activeNav, setActiveNav] = useState('dashboard')
+  const [activeNav, setActiveNav] = useState(() => {
+    const section = new URLSearchParams(window.location.search).get('section')
+    const validIds = [...allNav.map(n => n.id), 'settings']
+    return (section && validIds.includes(section)) ? section : 'dashboard'
+  })
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const profileRef = useRef<HTMLDivElement>(null)
   const user = getCurrentUser()
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   if (!user) { navigate('login'); return null }
 
-  const handleNav = (id: string) => { setActiveNav(id); setSidebarOpen(false) }
+  const handleNav = (id: string) => {
+    setActiveNav(id)
+    setSidebarOpen(false)
+    const params = new URLSearchParams(window.location.search)
+    params.set('section', id)
+    window.history.replaceState(null, '', `?${params.toString()}`)
+  }
   const handleLogout = () => { logoutUser(); navigate('login') }
   const pageTitle = allNav.find(n => n.id === activeNav)?.label ?? 'Dashboard'
 
@@ -836,7 +1550,9 @@ export default function DashboardPage({ navigate }: Props) {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <img src="/logo/1.avif" alt="projekx" className="h-9 w-auto" />
+          <button onClick={() => navigate('landing')} className="flex items-center">
+            <img src="/logo/1.avif" alt="projekx" className="h-9 w-auto" />
+          </button>
           <button onClick={() => setSidebarOpen(false)}
             className="lg:hidden text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors">
             <X className="h-5 w-5" />
@@ -849,22 +1565,18 @@ export default function DashboardPage({ navigate }: Props) {
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium mb-0.5 transition-colors text-left ${
                 activeNav === id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
               }`}>
-              <Icon className="h-4 w-4 flex-shrink-0" />
-              {label}
+              <Icon className="h-4 w-4 flex-shrink-0" />{label}
             </button>
           ))}
-
           <div className="mt-6 mb-2 px-3">
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Resources</span>
           </div>
-
           {resourcesNav.map(({ id, label, icon: Icon }) => (
             <button key={id} onClick={() => handleNav(id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium mb-0.5 transition-colors text-left ${
                 activeNav === id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
               }`}>
-              <Icon className="h-4 w-4 flex-shrink-0" />
-              {label}
+              <Icon className="h-4 w-4 flex-shrink-0" />{label}
             </button>
           ))}
         </nav>
@@ -872,8 +1584,7 @@ export default function DashboardPage({ navigate }: Props) {
         <div className="p-3 border-t border-gray-100">
           <button onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-500 transition-colors text-left">
-            <LogOut className="h-4 w-4 flex-shrink-0" />
-            Logout
+            <LogOut className="h-4 w-4 flex-shrink-0" />Logout
           </button>
         </div>
       </aside>
@@ -884,15 +1595,12 @@ export default function DashboardPage({ navigate }: Props) {
             className="lg:hidden text-gray-500 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-lg transition-colors flex-shrink-0">
             <Menu className="h-5 w-5" />
           </button>
-
           <span className="lg:hidden font-bold text-gray-900 text-sm truncate">{pageTitle}</span>
-
           <div className="relative hidden sm:block max-w-xs w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input type="text" placeholder="Search Projects..."
               className="w-full bg-gray-100 rounded-full pl-9 pr-4 h-9 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition" />
           </div>
-
           <div className="flex items-center gap-2 sm:gap-3 ml-auto flex-shrink-0">
             <button onClick={() => handleNav('notifications')}
               className={`p-2 rounded-full transition-colors ${
@@ -900,8 +1608,52 @@ export default function DashboardPage({ navigate }: Props) {
               }`}>
               <Bell className="h-5 w-5" />
             </button>
-            <div className="w-9 h-9 rounded-full bg-violet-600 flex items-center justify-center text-white text-xs font-bold select-none cursor-pointer">
-              {user.firstName[0]}{user.lastName[0]}
+            <div ref={profileRef} className="relative">
+              <button
+                onClick={() => setProfileOpen(o => !o)}
+                className="w-9 h-9 rounded-full bg-violet-600 flex items-center justify-center text-white text-xs font-bold hover:ring-2 hover:ring-violet-300 transition-all select-none">
+                {user.firstName[0]}{user.lastName[0]}
+              </button>
+
+              {profileOpen && (
+                <div className="absolute right-0 top-11 w-56 bg-white rounded-2xl shadow-lg border border-gray-100 py-2 z-50">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-violet-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                        {user.firstName[0]}{user.lastName[0]}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-900 truncate">{user.firstName} {user.lastName}</p>
+                        <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="py-1">
+                    <button
+                      onClick={() => { setProfileOpen(false); handleNav('settings') }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left">
+                      <Settings className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      Settings
+                    </button>
+                    <button
+                      onClick={() => { setProfileOpen(false); handleNav('support') }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left">
+                      <HelpCircle className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      Help
+                    </button>
+                  </div>
+
+                  <div className="border-t border-gray-100 py-1">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors text-left">
+                      <LogOut className="h-4 w-4 flex-shrink-0" />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </header>

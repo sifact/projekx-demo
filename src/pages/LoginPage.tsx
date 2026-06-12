@@ -31,9 +31,9 @@ export default function LoginPage({ navigate }: Props) {
       <div className="bg-white rounded-2xl shadow-lg p-10 w-full max-w-[460px]">
         {/* Logo circle */}
         <div className="flex justify-center mb-8">
-          <div className="w-24 h-24 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center overflow-hidden p-2">
+          <button onClick={() => navigate('landing')} className="w-24 h-24 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center overflow-hidden p-2 hover:shadow-lg transition-shadow">
             <img src="/logo/1.avif" alt="projekx" className="w-full h-auto object-contain" />
-          </div>
+          </button>
         </div>
 
         <h1 className="text-[28px] font-black text-center text-gray-900 mb-1">Welcome to projekx</h1>

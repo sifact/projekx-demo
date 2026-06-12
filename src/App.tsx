@@ -15,11 +15,25 @@ import SignUpPage from '@/pages/SignUpPage'
 import DashboardPage from '@/pages/DashboardPage'
 
 function App() {
-  const [page, setPage] = useState<Page>(() =>
-    getCurrentUser() ? 'dashboard' : 'landing'
-  )
+  const [page, setPage] = useState<Page>(() => {
+    const params = new URLSearchParams(window.location.search)
+    const p = params.get('page') as Page | null
+    if (p === 'login') return 'login'
+    if (p === 'signup') return 'signup'
+    return getCurrentUser() ? 'dashboard' : 'landing'
+  })
 
-  const navigate = (to: Page) => setPage(to)
+  const navigate = (to: Page) => {
+    setPage(to)
+    if (to === 'landing') {
+      window.history.replaceState(null, '', window.location.pathname)
+      return
+    }
+    const params = new URLSearchParams(window.location.search)
+    params.set('page', to)
+    if (to !== 'dashboard') params.delete('section')
+    window.history.replaceState(null, '', `?${params.toString()}`)
+  }
 
   if (page === 'login') return <LoginPage navigate={navigate} />
   if (page === 'signup') return <SignUpPage navigate={navigate} />
@@ -27,7 +41,7 @@ function App() {
 
   return (
     <div className="min-h-screen">
-      <Navbar onLogin={() => navigate('login')} />
+      <Navbar onLogin={() => navigate('login')} onHome={() => navigate('landing')} />
       <Hero onLogin={() => navigate('login')} />
       <Features />
       <Clients />
@@ -35,7 +49,7 @@ function App() {
       <Pricing />
       <Newsletter />
       <Contact />
-      <Footer />
+      <Footer onHome={() => navigate('landing')} />
     </div>
   )
 }
